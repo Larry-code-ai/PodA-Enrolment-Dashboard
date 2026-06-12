@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pod A · Student Success Scoreboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    /* Strava app theme */
+    --paper:#F7F7FA; --card:#FFFFFF; --ink:#242428; --muted:#6D6D78;
+    --line:#E6E6EB; --orange:#FC5200; --orange-soft:#FFE3D3;
+    --gold:#FFB400; --gold-soft:#FFF0CC; --grey-bar:#DFDFE8; --deep:#C23700;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font-family:'Archivo',sans-serif;
+       font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1100px;margin:0 auto;padding:40px 24px 80px}
+  .eyebrow{font-family:'Barlow Condensed';font-weight:600;letter-spacing:.18em;
+           text-transform:uppercase;font-size:14px;color:var(--orange)}
+  h1{font-family:'Barlow Condensed';font-weight:700;font-size:clamp(40px,6vw,64px);
+     line-height:.95;text-transform:uppercase;letter-spacing:.01em;margin:6px 0 4px}
+  .asof{color:var(--muted);font-size:14px}
+  .asof b{color:var(--ink)}
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+        gap:14px;margin:30px 0 44px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;
+       padding:18px 20px 16px;position:relative;overflow:hidden}
+  .kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;
+               background:var(--accent,var(--ink))}
+  .kpi .num{font-family:'Barlow Condensed';font-weight:700;font-size:48px;
+            line-height:1;font-variant-numeric:tabular-nums}
+  .kpi .lbl{font-size:13px;font-weight:600;margin-top:4px}
+  .kpi .sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+
+  h2{font-family:'Barlow Condensed';font-weight:700;font-size:28px;
+     text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px}
+  .section-sub{color:var(--muted);font-size:14px;margin-bottom:18px}
+  section{margin-bottom:52px}
+
+  /* Opportunity */
+  .opp{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px}
+  .opp-headline{font-size:15px;margin-bottom:14px}
+  .opp-headline b{color:var(--deep)}
+  .stackbar{display:flex;height:34px;border-radius:7px;overflow:hidden;margin-bottom:10px}
+  .stackbar div{display:flex;align-items:center;justify-content:center;
+                font-family:'Barlow Condensed';font-weight:600;font-size:16px;
+                color:#fff;min-width:0;white-space:nowrap}
+  .legend{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--muted);margin-bottom:20px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
+  .reasons{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:6px 28px}
+  .reason{display:flex;justify-content:space-between;border-bottom:1px dashed var(--line);
+          padding:5px 0;font-size:13.5px}
+  .reason b{font-variant-numeric:tabular-nums}
+
+  /* Leaderboard */
+  .board{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  table{width:100%;border-collapse:collapse;min-width:840px}
+  thead th{font-family:'Barlow Condensed';font-weight:600;font-size:14px;
+           letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+           padding:13px 14px;text-align:right;border-bottom:1px solid var(--line);
+           cursor:pointer;user-select:none;white-space:nowrap}
+  thead th:first-child,thead th:nth-child(2){text-align:left}
+  thead th.sorted{color:var(--orange)}
+  tbody td{padding:11px 14px;border-bottom:1px solid var(--line);text-align:right;
+           font-variant-numeric:tabular-nums;font-size:14px;white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  tbody td:first-child{text-align:left;font-family:'Barlow Condensed';font-weight:600;
+                       font-size:17px;color:var(--muted);width:40px}
+  tbody td:nth-child(2){text-align:left;font-weight:600;font-size:14.5px}
+  .badge{font-size:11px;font-weight:600;border-radius:20px;padding:2px 8px;margin-left:8px;
+         vertical-align:1px}
+  .badge.crown{background:var(--gold-soft);color:#9A6B00}
+  .badge.fire{background:var(--orange-soft);color:var(--orange)}
+  .compbar{display:flex;height:9px;border-radius:5px;overflow:hidden;width:170px;
+           background:var(--grey-bar)}
+  .compbar i{display:block;height:100%}
+  .cell-strong{font-weight:600}
+  .pct-good{color:var(--orange);font-weight:600}
+  .pct-warn{color:#CC9000;font-weight:600}
+  .pct-bad{color:var(--muted);font-weight:600}
+  .scrollx{overflow-x:auto}
+
+  /* Trend */
+  .trend{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px}
+  .trend-note{color:var(--muted);font-size:13.5px;margin-top:12px}
+
+  footer{border-top:1px solid var(--line);padding-top:20px;color:var(--muted);
+         font-size:12.5px;max-width:820px}
+  footer b{color:var(--ink)}
+  footer p{margin-bottom:6px}
+
+  @media (prefers-reduced-motion: no-preference){
+    .kpi .num{animation:pop .5s ease both}
+    @keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1}}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow" id="hdr-eyebrow">Keypath Student Success</div>
+    <h1>The Scoreboard</h1>
+    <div class="asof" id="hdr-asof"></div>
+  </header>
+
+  <div class="kpis" id="kpis"></div>
+
+  <section>
+    <h2>The Remaining Pool</h2>
+    <div class="section-sub">Eligible students (Not Active + Leave of Absence, excluding No Course Available) — your re-enrolment opportunity, by how recently anyone has tried them.</div>
+    <div class="opp">
+      <div class="opp-headline" id="opp-headline"></div>
+      <div class="stackbar" id="stackbar"></div>
+      <div class="legend" id="stack-legend"></div>
+      <div style="font-weight:600;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Why they're in the pool</div>
+      <div class="reasons" id="reasons"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Leaderboard</h2>
+    <div class="section-sub">Click any column to re-rank. <span style="color:var(--orange)">●</span> enrolled &nbsp;<span style="color:var(--gold)">●</span> eligible pool &nbsp;<span style="color:#C9C9D4">●</span> other</div>
+    <div class="board scrollx">
+      <table id="board">
+        <thead><tr>
+          <th>#</th><th data-k="name">Advisor</th>
+          <th data-k="cohort">Cohort</th>
+          <th>Mix</th>
+          <th data-k="enrolPct" class="sorted">Enrolled %</th>
+          <th data-k="eligible">Pool</th>
+          <th data-k="eligCovPct">Pool coverage (7d)</th>
+          <th data-k="attempted">Attempts (7d)</th>
+          <th data-k="contactPct">Contact rate</th>
+          <th data-k="stale">30d+ untouched</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Trend</h2>
+    <div class="section-sub">Pod-level movement, one point per weekly refresh.</div>
+    <div class="trend">
+      <canvas id="trendChart" height="90"></canvas>
+      <div class="trend-note" id="trend-note"></div>
+    </div>
+  </section>
+
+  <footer>
+    <p><b>Definitions.</b> <b>Enrolled %</b> = students with next-term status “Enrolled” ÷ full cohort. <b>Eligible pool</b> = Not Active + Leave of Absence, excluding students with no course available to enrol into. <b>Pool coverage</b> = share of the eligible pool with a phone attempt in the last 7 days. <b>Contact rate</b> = of students attempted in the last 7 days, the share also contacted in that window. <b>30d+ untouched</b> = eligible students with no attempt in 30+ days.</p>
+    <p>Aggregated data only — no student-identifiable information is published on this page. Source: CRM Total Cohort export.</p>
+  </footer>
+</div>
+
+<script>
+const DATA = {"pod": "Pod A", "asOf": "2026-06-12 12:02", "asOfNice": "12 Jun 2026", "windowDays": 7, "target": null, "podStats": {"cohort": 3814, "enrolled": 2270, "enrolPct": 59.5, "eligible": 846, "eligCovPct": 32.5, "attempted": 733, "contacted": 383, "contactPct": 52.3, "buckets": {"b7": 321, "b14": 196, "b30": 147, "b30p": 182}, "reasons": {"Unknown / Unresponsive": 629, "Work Commitments": 33, "Elective Not Preferred": 31, "Graduated": 24, "Family Commitments": 23, "Travelling": 20, "Course Content Issues": 16, "Health issues (personal)": 16}, "statuses": {"Enrolled": 2270, "Not Active": 1067, "Graduated": 355, "Leave of Absence": 102, "Withdrawn": 20}}, "ssas": [{"name": "Geoffrey Tawil", "cohort": 314, "enrolled": 237, "enrolPct": 75.5, "eligible": 26, "eligAttWin": 13, "eligCovPct": 50.0, "attempted": 60, "contacted": 30, "contactPct": 50.0, "buckets": {"b7": 15, "b14": 5, "b30": 1, "b30p": 5}, "partners": {"University of Technology Sydney": 314}}, {"name": "Sharon Pangalos", "cohort": 255, "enrolled": 188, "enrolPct": 73.7, "eligible": 33, "eligAttWin": 13, "eligCovPct": 39.4, "attempted": 54, "contacted": 34, "contactPct": 63.0, "buckets": {"b7": 15, "b14": 13, "b30": 1, "b30p": 4}, "partners": {"University of Technology Sydney": 255}}, {"name": "Richa Dogra", "cohort": 303, "enrolled": 221, "enrolPct": 72.9, "eligible": 20, "eligAttWin": 5, "eligCovPct": 25.0, "attempted": 59, "contacted": 36, "contactPct": 61.0, "buckets": {"b7": 5, "b14": 3, "b30": 5, "b30p": 7}, "partners": {"University of Technology Sydney": 303}}, {"name": "Aquila Bartuah", "cohort": 304, "enrolled": 210, "enrolPct": 69.1, "eligible": 24, "eligAttWin": 8, "eligCovPct": 33.3, "attempted": 57, "contacted": 26, "contactPct": 45.6, "buckets": {"b7": 8, "b14": 1, "b30": 8, "b30p": 7}, "partners": {"University of Technology Sydney": 304}}, {"name": "Lavanya Gupta", "cohort": 295, "enrolled": 188, "enrolPct": 63.7, "eligible": 39, "eligAttWin": 9, "eligCovPct": 23.1, "attempted": 54, "contacted": 35, "contactPct": 64.8, "buckets": {"b7": 14, "b14": 3, "b30": 6, "b30p": 16}, "partners": {"University of Technology Sydney": 295}}, {"name": "Josie Trifunovic", "cohort": 302, "enrolled": 187, "enrolPct": 61.9, "eligible": 56, "eligAttWin": 17, "eligCovPct": 30.4, "attempted": 78, "contacted": 45, "contactPct": 57.7, "buckets": {"b7": 19, "b14": 16, "b30": 14, "b30p": 7}, "partners": {"University of Technology Sydney": 302}}, {"name": "Andrew Wedderburn", "cohort": 295, "enrolled": 180, "enrolPct": 61.0, "eligible": 64, "eligAttWin": 8, "eligCovPct": 12.5, "attempted": 35, "contacted": 26, "contactPct": 74.3, "buckets": {"b7": 12, "b14": 25, "b30": 15, "b30p": 12}, "partners": {"University of Technology Sydney": 295}}, {"name": "Lily Soriano", "cohort": 266, "enrolled": 161, "enrolPct": 60.5, "eligible": 30, "eligAttWin": 3, "eligCovPct": 10.0, "attempted": 37, "contacted": 21, "contactPct": 56.8, "buckets": {"b7": 3, "b14": 11, "b30": 11, "b30p": 5}, "partners": {"University of Technology Sydney": 266}}, {"name": "Kaushi Kalugalla", "cohort": 265, "enrolled": 142, "enrolPct": 53.6, "eligible": 80, "eligAttWin": 26, "eligCovPct": 32.5, "attempted": 46, "contacted": 21, "contactPct": 45.7, "buckets": {"b7": 27, "b14": 15, "b30": 19, "b30p": 19}, "partners": {"James Cook University": 265}}, {"name": "Lika Paulo", "cohort": 296, "enrolled": 146, "enrolPct": 49.3, "eligible": 90, "eligAttWin": 47, "eligCovPct": 52.2, "attempted": 61, "contacted": 26, "contactPct": 42.6, "buckets": {"b7": 50, "b14": 6, "b30": 8, "b30p": 26}, "partners": {"James Cook University": 211, "RMIT": 85}}, {"name": "Jacinta Hughes", "cohort": 266, "enrolled": 122, "enrolPct": 45.9, "eligible": 125, "eligAttWin": 35, "eligCovPct": 28.0, "attempted": 45, "contacted": 21, "contactPct": 46.7, "buckets": {"b7": 41, "b14": 27, "b30": 18, "b30p": 39}, "partners": {"Southern Cross University": 266}}, {"name": "Gurman Kaur", "cohort": 272, "enrolled": 123, "enrolPct": 45.2, "eligible": 117, "eligAttWin": 39, "eligCovPct": 33.3, "attempted": 58, "contacted": 18, "contactPct": 31.0, "buckets": {"b7": 50, "b14": 23, "b30": 16, "b30p": 28}, "partners": {"Southern Cross University": 272}}, {"name": "Emily Liao", "cohort": 286, "enrolled": 125, "enrolPct": 43.7, "eligible": 103, "eligAttWin": 35, "eligCovPct": 34.0, "attempted": 62, "contacted": 34, "contactPct": 54.8, "buckets": {"b7": 43, "b14": 33, "b30": 21, "b30p": 6}, "partners": {"Southern Cross University": 286}}, {"name": "Tasneem Tarafdar", "cohort": 95, "enrolled": 40, "enrolPct": 42.1, "eligible": 39, "eligAttWin": 17, "eligCovPct": 43.6, "attempted": 27, "contacted": 10, "contactPct": 37.0, "buckets": {"b7": 19, "b14": 15, "b30": 4, "b30p": 1}, "partners": {"James Cook University": 95}}], "history": [{"date": "2026-06-12", "enrolPct": 59.5, "eligCovPct": 32.5, "contactPct": 52.3, "eligible": 846}]};
+
+const fmt = n => n.toLocaleString('en-AU');
+const pctClass = (v, good, warn) => v >= good ? 'pct-good' : v >= warn ? 'pct-warn' : 'pct-bad';
+
+// ---------- header ----------
+document.getElementById('hdr-eyebrow').textContent =
+  `Keypath Student Success · ${DATA.pod}`;
+document.getElementById('hdr-asof').innerHTML =
+  `As of <b>${DATA.asOfNice}</b> · ${DATA.ssas.length} advisors · refreshed weekly`;
+
+// ---------- KPIs ----------
+const p = DATA.podStats;
+const kpis = [
+  {num:`${p.enrolPct}%`, lbl:'Enrolled next term', sub:`${fmt(p.enrolled)} of ${fmt(p.cohort)} students`, c:'var(--orange)'},
+  {num:`${p.eligCovPct}%`, lbl:`Pool coverage · last ${DATA.windowDays}d`, sub:`${fmt(p.eligible)} students in the eligible pool`, c:'var(--gold)'},
+  {num:`${p.contactPct}%`, lbl:'Contact rate · attempts connecting', sub:`${fmt(p.contacted)} contacted of ${fmt(p.attempted)} attempted`, c:'var(--ink)'},
+  {num:fmt(p.buckets.b30p), lbl:'Untouched 30+ days', sub:'Eligible students with no recent attempt', c:'var(--deep)'},
+];
+document.getElementById('kpis').innerHTML = kpis.map(k =>
+  `<div class="kpi" style="--accent:${k.c}"><div class="num">${k.num}</div>
+   <div class="lbl">${k.lbl}</div><div class="sub">${k.sub}</div></div>`).join('');
+
+// ---------- opportunity ----------
+const b = p.buckets, total = b.b7+b.b14+b.b30+b.b30p;
+document.getElementById('opp-headline').innerHTML =
+  `<b>${fmt(b.b30p)} students</b> in the pool haven't had an attempt in over 30 days — that's the biggest single opportunity on this board.`;
+const segs = [
+  {v:b.b7,  c:'#FFD4BD', t:'#7A3A14', l:'≤ 7 days'},
+  {v:b.b14, c:'#FF9E66', t:'#fff',    l:'8–14 days'},
+  {v:b.b30, c:'#FC5200', t:'#fff',    l:'15–30 days'},
+  {v:b.b30p,c:'#C23700', t:'#fff',    l:'30+ days / never'},
+];
+document.getElementById('stackbar').innerHTML = segs.map(s =>
+  `<div style="background:${s.c};color:${s.t};flex:${s.v}">${s.v>total*0.07?fmt(s.v):''}</div>`).join('');
+document.getElementById('stack-legend').innerHTML = segs.map(s =>
+  `<span><i style="background:${s.c}"></i>${s.l} — ${fmt(s.v)}</span>`).join('');
+document.getElementById('reasons').innerHTML =
+  Object.entries(p.reasons).map(([k,v]) => `<div class="reason"><span>${k}</span><b>${fmt(v)}</b></div>`).join('');
+
+// ---------- leaderboard ----------
+let sortKey = 'enrolPct', sortDir = -1;
+const rows = DATA.ssas.map(s => ({...s, stale: s.buckets.b30p}));
+const bestEnrol = Math.max(...rows.map(r=>r.enrolPct));
+const bestCov  = Math.max(...rows.map(r=>r.eligCovPct));
+
+function renderBoard(){
+  rows.sort((a,b)=> typeof a[sortKey]==='string'
+    ? sortDir*a[sortKey].localeCompare(b[sortKey])
+    : sortDir*(a[sortKey]-b[sortKey]));
+  document.querySelector('#board tbody').innerHTML = rows.map((s,i)=>{
+    const other = s.cohort - s.enrolled - s.eligible;
+    const badges =
+      (s.enrolPct===bestEnrol?`<span class="badge crown">▲ top enrol</span>`:'')+
+      (s.eligCovPct===bestCov?`<span class="badge fire">⚡ top coverage</span>`:'');
+    return `<tr>
+      <td>${i+1}</td>
+      <td>${s.name}${badges}</td>
+      <td>${fmt(s.cohort)}</td>
+      <td><div class="compbar">
+        <i style="background:var(--orange);width:${s.enrolled/s.cohort*100}%"></i>
+        <i style="background:var(--gold);width:${s.eligible/s.cohort*100}%"></i>
+        <i style="background:#C9C9D4;width:${other/s.cohort*100}%"></i></div></td>
+      <td class="${pctClass(s.enrolPct,65,50)}">${s.enrolPct}%</td>
+      <td>${fmt(s.eligible)}</td>
+      <td class="${pctClass(s.eligCovPct,40,25)}">${s.eligCovPct}%</td>
+      <td>${fmt(s.attempted)}</td>
+      <td class="${pctClass(s.contactPct,55,40)}">${s.contactPct}%</td>
+      <td class="cell-strong">${fmt(s.stale)}</td>
+    </tr>`;
+  }).join('');
+}
+document.querySelectorAll('#board thead th[data-k]').forEach(th=>{
+  th.addEventListener('click',()=>{
+    const k = th.dataset.k;
+    sortDir = (k===sortKey) ? -sortDir : (k==='name'?1:-1);
+    sortKey = k;
+    document.querySelectorAll('#board thead th').forEach(t=>t.classList.remove('sorted'));
+    th.classList.add('sorted');
+    renderBoard();
+  });
+});
+renderBoard();
+
+// ---------- trend ----------
+const h = DATA.history || [];
+if (h.length >= 2){
+  new Chart(document.getElementById('trendChart'),{
+    type:'line',
+    data:{labels:h.map(x=>x.date),
+      datasets:[
+        {label:'Enrolled %',data:h.map(x=>x.enrolPct),borderColor:'#FC5200',backgroundColor:'#FC5200',tension:.3},
+        {label:'Pool coverage %',data:h.map(x=>x.eligCovPct),borderColor:'#FFB400',backgroundColor:'#FFB400',tension:.3},
+        {label:'Contact rate %',data:h.map(x=>x.contactPct),borderColor:'#242428',backgroundColor:'#242428',tension:.3},
+      ]},
+    options:{plugins:{legend:{labels:{font:{family:'Archivo'},boxWidth:12}}},
+      scales:{y:{suggestedMin:0,suggestedMax:100,ticks:{callback:v=>v+'%'}}}}
+  });
+  document.getElementById('trend-note').textContent =
+    `${h.length} weekly snapshots recorded.`;
+} else {
+  document.getElementById('trendChart').style.display='none';
+  document.getElementById('trend-note').textContent =
+    'The trend chart starts drawing once two or more weekly refreshes have been recorded. Run the build script with next week\'s export and this section comes alive.';
+}
+</script>
+</body>
+</html>
